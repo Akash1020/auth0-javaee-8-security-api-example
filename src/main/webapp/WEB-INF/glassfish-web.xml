@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE glassfish-web-app PUBLIC "-//GlassFish.org//DTD GlassFish Application Server 4.0 Servlet 4.0//EN" "http://glassfish.org/dtds/glassfish-web-app_4_0.dtd">
+<glassfish-web-app error-url="">
+    
+    <parameter-encoding default-charset="UTF-8"/>
+    
+</glassfish-web-app>

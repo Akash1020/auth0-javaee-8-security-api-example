@@ -1,4 +1,4 @@
-package auth0.security.example;
+package com.auth0.examples.java.entities;
 
 public class User {
 
