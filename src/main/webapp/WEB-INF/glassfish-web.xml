@@ -4,4 +4,10 @@
     
     <parameter-encoding default-charset="UTF-8"/>
     
+    <security-role-mapping>
+        <role-name>MEMBER</role-name>
+        <principal-name>MEMBER</principal-name>
+        <group-name>MEMBER</group-name>
+    </security-role-mapping>
+    
 </glassfish-web-app>
