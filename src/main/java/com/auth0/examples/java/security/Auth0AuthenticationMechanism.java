@@ -1,5 +1,11 @@
 package com.auth0.examples.java.security;
 
+import java.io.ByteArrayInputStream;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -15,10 +21,32 @@ import javax.security.enterprise.identitystore.IdentityStore;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.codec.binary.Base64;
+import org.json.JSONObject;
+
+import com.auth0.examples.java.configuration.Auth0Configuration;
+import com.auth0.examples.java.util.Constants;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+
 @ApplicationScoped
 public class Auth0AuthenticationMechanism implements HttpAuthenticationMechanism {
 	
+	private static final String JWKS_KEYS_KEY = "keys";
+	
+	private static final String JWKS_X5C_KEY = "x5c";
+	
+	private static final String CERTIFICATE_INSTANCE = "X.509";
+	
 	private static final List<String> WHITELISTED_URLS = Arrays.asList(new String[] {"/authenticate"});
+	
+	@Inject
+	private Auth0Configuration auth0Configuration;
 	
 	@Inject
 	private IdentityStore identityStore;
@@ -26,17 +54,49 @@ public class Auth0AuthenticationMechanism implements HttpAuthenticationMechanism
 	@Override
 	public AuthenticationStatus validateRequest(HttpServletRequest request, HttpServletResponse response,
 			HttpMessageContext httpMessageContext) throws AuthenticationException {
-		String authorizationHeader = request.getHeader("Authorization");
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer")) {
-            String token = authorizationHeader.substring("Bearer".length());
-            Credential credential = new Auth0Credential("username", new HashSet<String>(Arrays.asList("MEMBER")));
-
-    		// TODO: Integrate Auth0 for security access
-
-    		return httpMessageContext.notifyContainerAboutLogin(identityStore.validate(credential));
-        } else if (WHITELISTED_URLS.contains(request.getPathInfo())) {
+		String authorizationHeader = request.getHeader(Constants.AUTHORIZATION_HEADER);
+		
+		if (WHITELISTED_URLS.contains(request.getPathInfo())) {
         	return httpMessageContext.doNothing();
+		} else if (authorizationHeader != null && authorizationHeader.startsWith(Constants.TOKEN_PEFIX)) {
+            String token = authorizationHeader.substring(Constants.TOKEN_PEFIX.length());
+            
+            try {
+                // request public key to Auth0
+                HttpResponse<String> jwks = Unirest.get(auth0Configuration.getEndpoint() + auth0Configuration.getJwksURLPath())
+    					  .header("content-type", "application/json")
+    					  .asString();
+                
+                JSONObject jsonJwks = new JSONObject(jwks.getBody());
+                String x5cBase64 = ((JSONObject) jsonJwks.getJSONArray(JWKS_KEYS_KEY)
+                		.get(0))
+                		.getJSONArray(JWKS_X5C_KEY)
+                		.getString(0);
+                byte[] x5cBytes = Base64.decodeBase64(x5cBase64);
+                
+            	// get public key 
+                CertificateFactory fact = CertificateFactory.getInstance(CERTIFICATE_INSTANCE);
+                X509Certificate cer = (X509Certificate) fact.generateCertificate(new ByteArrayInputStream(x5cBytes));
+                RSAPublicKey publicKey = (RSAPublicKey) cer.getPublicKey();
+                RSAPrivateKey privateKey = null;
+
+                // verify token
+                Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+                JWTVerifier verifier = JWT.require(algorithm)
+                    .withIssuer(auth0Configuration.getEndpoint())
+                    .build();
+                
+                verifier.verify(token);
+            } catch (JWTVerificationException | CertificateException | UnirestException exception){
+            	
+            	// return unauthorized if any problem occurs verifying token
+            	return httpMessageContext.responseUnauthorized();
+            }
+            
+            Credential credential = new Auth0Credential(token, new HashSet<String>(Arrays.asList("MEMBER")));
+
+            // token valid, validating credential
+    		return httpMessageContext.notifyContainerAboutLogin(identityStore.validate(credential));
         } else {
         	return httpMessageContext.responseUnauthorized();
         }
