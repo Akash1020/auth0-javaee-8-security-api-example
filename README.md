@@ -36,7 +36,7 @@ If you use Windows, just run 'gradlew.bat war'.
 Now it is time to deploy and run the War package using Payara Micro as follows, substituing <path_to_payara_micro> by the abolute path where you have installed Payara Micro. Note your war filename could be different, just check before you run the war file created in the 'libs' folder.
 
 ```
-java -jar <path_to_payara_micro>/payara-micro-5.183.jar --deploy ./build/libs/auth0-javaee-8-security-api-example.war 
+java -jar <path_to_payara_micro>/payara-micro-5.183.jar --deploy ./build/libs/auth0-java-8-security-api.war
 ```
 
 After fiew seonds Payara Micro shows you the war has been deployed and it is ready to be used. 
@@ -46,7 +46,7 @@ After fiew seonds Payara Micro shows you the war has been deployed and it is rea
 Once the war has started, you can request a token using curl
 
 ```
-curl -i -H "Content-Type: application/json" -X POST -d '{"username": "user1", "password": "mypassword"}' http://localhost:8080/auth0-javaee-8-security-api-example/authenticate
+curl -i -H "Content-Type: application/json" -X POST -d '{"username": "user1", "password": "mypassword"}' http://localhost:8080/auth0-java-8-security-api.war/authenticate
 ```
 
 Authenticate service requests a token to Auth0 and then it sends the token back to the caller. When the curl command finishes, it is shown in your shell Authorization header with the token starting with Bearer.
@@ -54,7 +54,7 @@ Authenticate service requests a token to Auth0 and then it sends the token back 
 Using the token received, it is possible to call to the other service in the example using again curl as below.
 
 ```
-curl -i -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -L http://localhost:8080/auth0-javaee-8-security-api-example
+curl -i -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -L http://localhost:8080/auth0-java-8-security-api.war
 ```
 
 Remember to substitute <token> by the token you have received. Curl output in this case is a list of books hardcoded in the service.
@@ -68,7 +68,3 @@ If you would use an expired or non valid token, curl would show an answer like t
 ```
 <html><head></head><body><h1>HTTP Status 401 - Unauthorized</h1><hr/><p><b>type</b> Status report</p><p><b>message</b>Unauthorized</p><p><b>description</b>This request requires HTTP authentication.</p><hr/><h3>Payara Micro #badassfish</h3></body></html>
 ```
-
-
-
-
